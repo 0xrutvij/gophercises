@@ -1,0 +1,10 @@
+[
+    {
+        "path": "/python-help",
+        "url": "https://docs.python.org/3/"
+    },
+    {
+        "path": "/swift-help",
+        "url": "https://docs.swift.org/swift-book/index.html"
+    }
+]

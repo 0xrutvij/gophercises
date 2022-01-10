@@ -1,6 +1,7 @@
 package urlshort
 
 import (
+	json "encoding/json"
 	"net/http"
 
 	yaml "gopkg.in/yaml.v2"
@@ -24,6 +25,36 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 	}
 }
 
+// JSONHandler will parse the provided JSON and then return
+// an http.HandlerFunc (which also implements http.Handler)
+// that will attempt to map any paths to their corresponding
+// URL. If the path is not provided in the YAML, then the
+// fallback http.Handler will be called instead.
+//
+// JSON is expected to be in the format:
+//
+//     [
+//		{
+//			"path": "/some-path",
+//			"url": "https://www.some-url.com/demo"
+//		},
+//		...
+//	  ]
+//
+// The only errors that can be returned all related to having
+// invalid YAML data.
+//
+// See MapHandler to create a similar http.HandlerFunc via
+// a mapping of paths to urls.
+func JSONHandler(jsonBytes []byte, fallback http.Handler) (http.HandlerFunc, error) {
+	pathUrls, err := parseJson(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	pathsToUrls := buildMap(pathUrls)
+	return MapHandler(pathsToUrls, fallback), nil
+}
+
 // YAMLHandler will parse the provided YAML and then return
 // an http.HandlerFunc (which also implements http.Handler)
 // that will attempt to map any paths to their corresponding
@@ -41,17 +72,11 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func YAMLHandler(yamlBytes []byte, fallback http.Handler) (http.HandlerFunc, error) {
-
-	// 1. parse yaml
 	pathUrls, err := parseYaml(yamlBytes)
 	if err != nil {
 		return nil, err
 	}
-
-	// 2. convert yaml into map
 	pathsToUrls := buildMap(pathUrls)
-
-	// 3. return a map handler using the map
 	return MapHandler(pathsToUrls, fallback), nil
 }
 
@@ -73,7 +98,17 @@ func parseYaml(yamlBytes []byte) ([]pathUrl, error) {
 	return pathUrls, err
 }
 
+func parseJson(jsonBytes []byte) ([]pathUrl, error) {
+	var pathUrls []pathUrl
+	err := json.Unmarshal(jsonBytes, &pathUrls)
+	if err != nil {
+		return nil, err
+	}
+	return pathUrls, nil
+
+}
+
 type pathUrl struct {
-	Path string `yaml:"path"`
-	URL  string `yaml:"url"`
+	Path string `yaml:"path" json:"path"`
+	URL  string `yaml:"url" json:"url"`
 }
